@@ -142,6 +142,11 @@ disappears at the next keypress; otherwise, it remains forever."
   :type 'boolean
   :group 'tempo)
 
+(defcustom tempo-prefix "tempo-template-"
+  "Prefix appended to the generated interactive function."
+  :type 'String
+  :group 'tempo)
+
 ;;; Internal variables
 
 (defvar tempo-insert-string-functions nil
@@ -220,8 +225,8 @@ it recognizes the argument, and nil otherwise.")
 
 (defun tempo-define-template (name elements &optional tag documentation taglist)
   "Define a template.
-This function creates a template variable `tempo-template-NAME' and an
-interactive function `tempo-template-NAME' that inserts the template
+This function creates a template variable (`tempo-prefix' + NAME) and an
+interactive function (`tempo-prefix' + NAME) that inserts the template
 at the point.  The created function is returned.
 
 NAME is a string that contains the name of the template, ELEMENTS is a
@@ -274,8 +279,8 @@ The elements in ELEMENTS can be of several types:
    cases.  If an expression returns a list '(l foo bar), the elements
    after `l' will be inserted according to the usual rules.  This makes
    it possible to return several elements from one expression."
-  (let* ((template-name (intern (concat "tempo-template-"
-				       name)))
+  (let* ((template-name (intern (concat tempo-prefix
+					name)))
 	 (command-name template-name))
     (set template-name elements)
     (fset command-name (list 'lambda (list '&optional 'arg)
