@@ -210,6 +210,11 @@ it recognizes the argument, and nil otherwise.")
 (defvar tempo-region-stop (make-marker)
   "Region stop when inserting around the region.")
 
+(defvar tempo-insertion-start nil
+  "Buffer position where actual tempo insertion started.
+To be set by custom elements which alter point before they actually
+insert somethin.")
+
 ;; Make some variables local to every buffer
 
 (make-variable-buffer-local 'tempo-marks)
@@ -316,12 +321,15 @@ mode, ON-REGION is ignored and assumed true if the region is active."
 	     (set-marker tempo-region-stop (max (mark) (point))))
 	(if on-region
 	    (goto-char tempo-region-start))
+	(setq tempo-insertion-start nil)
 	(save-excursion
 	  (tempo-insert-mark (point-marker))
 	  (mapc (function (lambda (elt)
 			    (tempo-insert elt on-region)))
 		(symbol-value template))
 	  (tempo-insert-mark (point-marker)))
+	(when tempo-insertion-start
+	  (goto-char tempo-insertion-start))
 	(tempo-forward-mark))
     (tempo-forget-insertions)
     ;; Should I check for zmacs here too???
@@ -361,7 +369,7 @@ possible."
               (eq (car element) 'r>)) (if on-region
                                           (progn
                                             (goto-char tempo-region-stop)
-                                            (indent-region (mark) (point) nil))
+                                            (indent-region tempo-region-start tempo-region-stop nil))
                                         (tempo-insert-prompt-compat
                                          (cdr element))))
 	((and (consp element)
@@ -378,7 +386,7 @@ possible."
 	((eq element 'r>) (if on-region
 			      (progn
 				(goto-char tempo-region-stop)
-				(indent-region (mark) (point) nil))
+				(indent-region tempo-region-start tempo-region-stop nil))
 			    (tempo-insert-mark (point-marker))))
 	((eq element '>) (indent-according-to-mode))
 	((eq element '&) (if (not (or (= (current-column) 0)
@@ -403,7 +411,7 @@ possible."
 					 "\\=\\s-*$" nil t))))
 			     (open-line 1)))
 	((null element))
-	(t (tempo-insert (or (tempo-is-user-element element)
+	(t (tempo-insert (or (tempo-is-user-element element on-region)
 			     (eval element))
 			 on-region))))
 
@@ -459,12 +467,12 @@ never prompted."
 ;;;
 ;;; tempo-is-user-element
 
-(defun tempo-is-user-element (element)
+(defun tempo-is-user-element (element on-region)
   "Tries all the user-defined element handlers in `tempo-user-elements'."
   ;; Sigh... I need (some list)
   (catch 'found
     (mapc (function (lambda (handler)
-		      (let ((result (funcall handler element)))
+		      (let ((result (funcall handler element on-region)))
 			(if result (throw 'found result)))))
 	  tempo-user-elements)
     (throw 'found nil)))
