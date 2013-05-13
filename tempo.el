@@ -278,14 +278,15 @@ The elements in ELEMENTS can be of several types:
 				       name)))
 	 (command-name template-name))
     (set template-name elements)
-    (fset command-name (list 'lambda (list '&optional 'arg)
+    (fset command-name (list 'lambda (list '&optional 'arg 'named-insertions)
 			     (or documentation
 				 (concat "Insert a " name "."))
 			     (list 'interactive "*P")
 			     (list 'tempo-insert-template (list 'quote
 								template-name)
 				   (list 'if 'tempo-insert-region
-					 (list 'not 'arg) 'arg))))
+					 (list 'not 'arg) 'arg)
+					 'named-insertions)))
     (and tag
 	 (tempo-add-tag tag template-name taglist))
     command-name))
@@ -293,12 +294,19 @@ The elements in ELEMENTS can be of several types:
 ;;;
 ;;; tempo-insert-template
 
-(defun tempo-insert-template (template on-region)
+(defun tempo-insert-template (template on-region &optional named-insertions)
   "Insert a template.
 TEMPLATE is the template to be inserted.  If ON-REGION is non-nil the
 `r' elements are replaced with the current region.  In Transient Mark
-mode, ON-REGION is ignored and assumed true if the region is active."
+mode, ON-REGION is ignored and assumed true if the region is active.
+
+NAMED-INSERTIONS is used to initialize `tempo-named-insertions'.
+I.e. all elements (s ...) (p ...) and (P ...) refering to a name
+which is in NAMED-INSERTIONS are thus defined and the user is not
+prompted. Usefull when you want to call your tempo-template-xy
+from within a (non-interactive) Lisp program."
   (unwind-protect
+      (setq tempo-named-insertions named-insertions)
       (progn
 	(if (or (and (boundp 'transient-mark-mode) ; For Emacs
 		     transient-mark-mode
